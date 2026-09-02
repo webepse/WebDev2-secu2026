@@ -40,5 +40,17 @@
             </div>
         </div>
     </div>
+
+    <?php
+        require "config/connexion.php";
+        $req = $bdd->query("SELECT * FROM contacts");
+        $datas = $req->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach($datas as $data){
+            echo "<div>";
+                echo "<h1>".htmlspecialchars($data['nom'])."</h1>";
+            echo "</div>";
+        }
+    ?>
 </body>
 </html>
