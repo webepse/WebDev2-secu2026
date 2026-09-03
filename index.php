@@ -16,7 +16,7 @@
         <div class="row">
             <div class="col-md-10 offset-md-1">
                 <h1>Formulaire</h1>
-                <form action="traitement.php" method="POST">
+                <form action="traitement.php" method="POST" enctype="multipart/form-data">
                     <?php 
                         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                     ?>
@@ -32,6 +32,10 @@
                      <div class="form-group my-3">
                         <label for="nom">Email: </label>
                         <input type="email" name="email" id="email" class="form-control">
+                    </div>
+                    <div class="form-group my-3">
+                        <label for="photo">Photo</label>
+                        <input type="file" name="image" id="photo" class="form-control">
                     </div>
                     <div class="form-group my-3">
                         <input type="submit" value="Envoyer" class="btn btn-success">

@@ -32,25 +32,103 @@
     }
 
     if($err===0){
-        require "config/connexion.php";
-        $req = $bdd->prepare("INSERT INTO contacts(nom,prenom,email) VALUES(:nom,:prenom,:email)");
-        $req->execute([
-            "nom"=>$nom,
-            "prenom"=>$prenom,
-            "email"=>$email
-        ]);
+        
+        // vérification de la présence et de la bonne réception du fichier
+        if(!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK){
+            header("Location: index.php?error=5");
+            exit();
+        }
 
-        // bonne pratique: forcer la régénération du token
-        // => supprimer le token => fonction unset();
-        unset($_SESSION['csrf_token']);
+        // récup le fichier
+        $tmpPath = $_FILES['image']['tmp_name'];
+        // définition de ma taille maxi
+        $tailleMax = 2 * 1024 * 1024; // 2 Mo // 1,048,576 octets
+     
+        // vérification de taille
+        if($_FILES['image']['size'] > $tailleMax)
+        {
+            header("Location: index.php?error=6");
+            exit();
+        }
 
-        header("Location: index.php?add=success");
-        exit();
+        // extension
+        // image.php.jpg
+        // image.JPG
+        $extension = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+        $extensionAutorisees = ['jpg','jpeg','png','svg',"webp"];
+
+        if(!in_array($extension,$extensionAutorisees, true)){
+            header("Location: index.php?error=7");
+            exit();
+        }
+
+        // vérification du Mime Type => utilisation contenu binaire(fileinfo)
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeReel = $finfo->file($tmpPath);
+
+        $mimesAutorises = [
+            "jpg" => "image/jpeg",
+            "jpeg" => "image/jpeg",
+            "png" => "image/png",
+            "svg" => "image/svg+xml",
+            "webp" => "image/webp"
+        ];
+
+        if(!in_array($mimeReel, $mimesAutorises, true) || $mimesAutorises[$extension] !== $mimeReel){
+            header("Location: index.php?error=8");
+            exit();
+        }
+
+        // gestion du nom du fichier
+        // dossier/ico/fichier.jpg
+        // fichier.jpg
+        $nomImage =  basename($_FILES['image']['name']);
+        $nomImageLisible = strtr($nomImage, 'ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝàáâãäåçèéêëìíîïðòóôõöùúûüýÿ','AAAAAACEEEEIIIIOOOOOUUUUYaaaaaaceeeeiiiioooooouuuuyy');
+        $nomImageSafe = preg_replace('/([^.a-z0-9]+)/i', '-', $nomImageLisible);
+        $uniqnomSafe = uniqid().'-'.$nomImageSafe;
+
+
+        // $uniqnomSafe = bin2hex(random_bytes(16)).'.'.$extension;
+
+        // dfkqsjfkldfj-fichier.jpg
+        // imagesdfkqsjfkldfj-fichier.jpg
+        $dossierDestination = "images/";
+        
+        if(move_uploaded_file($tmpPath, $dossierDestination.$uniqnomSafe)){
+            require "config/connexion.php";
+            try{
+                 $req = $bdd->prepare("INSERT INTO contacts(nom,prenom,email,photo) VALUES(:nom,:prenom,:email,:image)");
+                $req->execute([
+                    "nom"=>$nom,
+                    "prenom"=>$prenom,
+                    "email"=>$email,
+                    "image"=>$uniqnomSafe
+                ]);
+                unset($_SESSION['csrf_token']);
+                header("Location: index.php?add=success");
+                exit();
+            }catch(PDOException $e){
+                if(file_exists($dossierDestination.$uniqnomSafe)){
+                    unlink($dossierDestination.$uniqnomSafe);
+                }
+                header("Location: index.php?error=500");
+                exit();
+            }
+
+        }else{
+            header("Location: index.php?error=9");
+            exit();
+        }
+
+     
 
     }else{
         header("Location: index.php?error=".$err);
         exit();
     }
+
+
+
 
 
 
